@@ -100,6 +100,7 @@ Minimal config example:
 ### Channel Setup
 
 For detailed per-channel setup, see [references/channels.md](references/channels.md).
+For per-channel troubleshooting (failure signatures, setup walkthroughs), see [references/channel_troubleshooting.md](references/channel_troubleshooting.md).
 
 Quick channel add:
 
@@ -159,6 +160,9 @@ openclaw agents delete <id>             # Remove agent
 ### Security
 
 For detailed security hardening, see [references/security.md](references/security.md).
+For secrets management (SecretRef, vault integration), see [references/secrets.md](references/secrets.md).
+For sandboxing (Docker isolation for tools), see [references/sandboxing.md](references/sandboxing.md).
+For full config field reference, see [references/config_reference.md](references/config_reference.md).
 
 ```bash
 openclaw security audit                 # Check posture
