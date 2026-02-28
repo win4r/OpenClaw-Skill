@@ -157,6 +157,18 @@ openclaw agents list --bindings         # Show agent-channel bindings
 openclaw agents delete <id>             # Remove agent
 ```
 
+### Nodes (iOS / Android / macOS / Headless)
+
+For detailed node setup, see [references/nodes.md](references/nodes.md).
+
+```bash
+openclaw nodes status                   # List connected nodes
+openclaw nodes describe --node <id>     # Node capabilities
+openclaw devices list                   # Pending device approvals
+openclaw devices approve <requestId>    # Approve a device
+openclaw node run --host <host> --port 18789  # Start headless node host
+```
+
 ### Security
 
 For detailed security hardening, see [references/security.md](references/security.md).
@@ -184,6 +196,8 @@ openclaw uninstall
 ```
 
 ## Tools Reference
+
+For detailed per-tool documentation, see [references/tools.md](references/tools.md).
 
 OpenClaw provides built-in tools to the AI agent. Manage with `tools.allow`, `tools.deny`, and `tools.profile` in config.
 
