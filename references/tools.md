@@ -71,6 +71,8 @@ Example:
 
 ## File System Tools
 
+See also: [Exec Tool (detailed)](exec.md), [Exec Approvals](exec_approvals.md).
+
 ### read / write / edit
 
 - `read`: Read file contents
@@ -172,6 +174,8 @@ Per-agent override: `agents.list[].tools.loopDetection`
 
 ## Web Tools
 
+See also: [Web Tools (detailed)](web_tools.md) for provider setup (Brave, Perplexity, Gemini).
+
 ### web_search
 
 Web search via Brave Search API.
@@ -195,6 +199,8 @@ Config:
 Fetch web page content.
 
 ## Browser Tool
+
+See also: [Browser (detailed)](browser.md) for profiles, remote CDP, extension relay, SSRF policy, and Control API.
 
 Full browser automation via CDP (Chrome DevTools Protocol).
 
@@ -372,15 +378,20 @@ List configured agents and their bindings.
 
 ## Plugins + Skills
 
+See also: [Plugins (detailed)](plugins.md), [Skills (detailed)](skills.md).
+
 - **Plugins**: Extended tools from plugin packages
   - Install: `openclaw plugins install <name>`
   - CLI: `openclaw plugins list|info|enable|disable|doctor`
+  - Official plugins: Memory, Voice Call, Zalo, Matrix, Nostr, MS Teams, Google Auth, Gemini CLI, Qwen, Copilot Proxy
 
 - **Skills**: Per-agent skills in `agentDir/skills/` or shared from `~/.openclaw/skills`
   - CLI: managed via Control UI (Skills panel)
+  - Marketplace: [ClawHub](https://clawhub.com)
 
-- **Lobster**: Typed workflow runtime with resumable approvals (requires Lobster CLI)
-- **LLM Task**: JSON-only LLM step for structured workflow output
+- **Lobster**: Typed workflow runtime with resumable approvals (requires Lobster CLI). See [Lobster (detailed)](lobster.md).
+- **LLM Task**: JSON-only LLM step for structured workflow output. See [LLM Task (detailed)](llm_task.md).
+- **OpenProse**: Multi-agent program runtime with parallelism and approvals. See [OpenProse (detailed)](openprose.md).
 
 ## Common Parameters
 

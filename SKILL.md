@@ -7,6 +7,32 @@ description: Comprehensive guide for installing, configuring, operating, and tro
 
 OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents across WhatsApp, Telegram, Discord, Slack, iMessage, Signal, and 15+ other channels simultaneously. It runs on macOS, Linux, or Windows.
 
+## Reference Files
+
+| Reference | Coverage |
+|---|---|
+| [channels.md](references/channels.md) | Per-channel setup (WhatsApp, Telegram, Discord, etc.) |
+| [channel_troubleshooting.md](references/channel_troubleshooting.md) | Per-channel failure signatures and walkthroughs |
+| [tools.md](references/tools.md) | Tools inventory (profiles, groups, all built-in tools) |
+| [exec.md](references/exec.md) | Exec tool: parameters, config, PATH, security, process tool |
+| [exec_approvals.md](references/exec_approvals.md) | Exec approvals: allowlists, safe bins, approval flow |
+| [browser.md](references/browser.md) | Browser tool: profiles, CDP, relay, SSRF, Control API |
+| [web_tools.md](references/web_tools.md) | Web tools: Brave, Perplexity, Gemini search providers |
+| [lobster.md](references/lobster.md) | Lobster: typed workflow runtime with approvals |
+| [llm_task.md](references/llm_task.md) | LLM Task: JSON-only LLM step for structured output |
+| [openprose.md](references/openprose.md) | OpenProse: multi-agent program runtime |
+| [plugins.md](references/plugins.md) | Plugins: official list, config, manifest, CLI, authoring |
+| [skills.md](references/skills.md) | Skills: locations, config, ClawHub, watcher, token impact |
+| [providers.md](references/providers.md) | Model provider setup |
+| [multi_agent.md](references/multi_agent.md) | Multi-agent routing |
+| [nodes.md](references/nodes.md) | Nodes (iOS/Android/macOS/headless) |
+| [security.md](references/security.md) | Security hardening |
+| [secrets.md](references/secrets.md) | Secrets management (SecretRef, vault) |
+| [sandboxing.md](references/sandboxing.md) | Sandboxing (Docker isolation) |
+| [config_reference.md](references/config_reference.md) | Full config field reference |
+| [gateway_ops.md](references/gateway_ops.md) | Gateway operations |
+| [remote_access.md](references/remote_access.md) | Remote access, SSH, Tailscale, web dashboard |
+
 ## Quick Reference
 
 ### Key Paths
@@ -101,6 +127,7 @@ Minimal config example:
 
 For detailed per-channel setup, see [references/channels.md](references/channels.md).
 For per-channel troubleshooting (failure signatures, setup walkthroughs), see [references/channel_troubleshooting.md](references/channel_troubleshooting.md).
+For plugins adding new channels (Matrix, Nostr, MS Teams, etc.), see [references/plugins.md](references/plugins.md).
 
 Quick channel add:
 
@@ -175,6 +202,7 @@ For detailed security hardening, see [references/security.md](references/securit
 For secrets management (SecretRef, vault integration), see [references/secrets.md](references/secrets.md).
 For sandboxing (Docker isolation for tools), see [references/sandboxing.md](references/sandboxing.md).
 For full config field reference, see [references/config_reference.md](references/config_reference.md).
+For remote access (SSH, Tailscale, VPN), see [references/remote_access.md](references/remote_access.md).
 
 ```bash
 openclaw security audit                 # Check posture
@@ -199,7 +227,16 @@ openclaw uninstall
 
 For detailed per-tool documentation, see [references/tools.md](references/tools.md).
 
-OpenClaw provides built-in tools to the AI agent. Manage with `tools.allow`, `tools.deny`, and `tools.profile` in config.
+For specific tools, see:
+- [references/exec.md](references/exec.md) — Exec tool deep-dive
+- [references/exec_approvals.md](references/exec_approvals.md) — Exec approvals and allowlists
+- [references/browser.md](references/browser.md) — Browser automation deep-dive
+- [references/web_tools.md](references/web_tools.md) — Web search/fetch with multiple providers
+- [references/lobster.md](references/lobster.md) — Lobster workflow runtime
+- [references/llm_task.md](references/llm_task.md) — LLM Task for structured JSON output
+- [references/openprose.md](references/openprose.md) — OpenProse multi-agent programs
+- [references/plugins.md](references/plugins.md) — Plugin system (install, author, distribute)
+- [references/skills.md](references/skills.md) — Skills system (load, config, ClawHub)
 
 **Tool profiles**: `minimal`, `coding`, `messaging`, `full` (default).
 
