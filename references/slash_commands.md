@@ -73,7 +73,23 @@ Slash commands are in-chat commands that control agent behavior, session managem
 
 | Command | Description |
 |---|---|
-| `/subagents` | Manage sub-agent sessions |
+| `/subagents list` | List active sub-agent sessions |
+| `/subagents kill <id\|#\|all>` | Stop a sub-agent (or all) + cascade to children |
+| `/subagents log <id\|#> [limit] [tools]` | View sub-agent transcript |
+| `/subagents info <id\|#>` | Detailed sub-agent info |
+| `/subagents send <id\|#> <message>` | Send message to sub-agent |
+| `/subagents steer <id\|#> <message>` | Nudge sub-agent without replacing context |
+| `/subagents spawn <agentId> <task>` | Spawn new sub-agent (one-shot mode) |
+
+### Thread & Focus
+
+| Command | Description |
+|---|---|
+| `/focus <target>` | Bind current thread to a sub-agent/session target |
+| `/unfocus` | Remove thread binding for current bound thread |
+| `/agents` | List active runs and binding state (`thread:<id>` or `unbound`) |
+| `/session idle <duration\|off>` | Set/inspect inactivity auto-unfocus |
+| `/session max-age <duration\|off>` | Set/inspect hard cap age |
 
 ### Other
 

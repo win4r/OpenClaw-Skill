@@ -40,6 +40,8 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [slash_commands.md](references/slash_commands.md) | Chat slash commands (/new, /model, /acp, etc.) |
 | [platforms.md](references/platforms.md) | Platform-specific guides (macOS, iOS, Android, Linux, Windows) |
 | [diffs_firecrawl.md](references/diffs_firecrawl.md) | Diffs plugin + Firecrawl anti-bot fallback |
+| [subagents.md](references/subagents.md) | Sub-agents: nested spawning, thread binding, announce, tool policy |
+| [memory.md](references/memory.md) | Memory system, vector search, hybrid BM25, compaction |
 
 ## Quick Reference
 
