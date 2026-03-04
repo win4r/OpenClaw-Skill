@@ -52,9 +52,9 @@ Venice AI is highlighted as a recommended provider for privacy-conscious deploym
 | Z.AI | `zai/*` | API key |
 | Xiaomi | `xiaomi/*` | API key |
 | GLM | `glm/*` | API key |
-| MiniMax | `minimax/*` | API key |
-| Qianfan | `qianfan/*` | API key |
-| OpenCode Zen | `opencode/*` | API key |
+| MiniMax | `minimax/*` | API key | Includes `MiniMax-M2.5-highspeed` (v2026.3.2) |
+| Qianfan | `qianfan/*` | API key | |
+| OpenCode Zen | `opencode/*` | API key | |
 
 ### Local Providers
 
@@ -125,6 +125,51 @@ openclaw models auth order get|set|clear  # Auth profile priority
 - Model refs use `provider/model` format
 - For custom/self-hosted providers, see Configuration Reference → Custom providers
 
+### Prompt Caching
+
+```json5
+{
+  agents: {
+    defaults: {
+      params: {
+        cacheRetention: 300,    // Cache TTL in seconds
+      },
+    },
+    list: [{
+      id: "high-cache",
+      params: { cacheRetention: 600 },  // Per-agent override
+    }],
+  },
+}
+```
+
+Precedence: Job payload → Per-agent params → Agent defaults → Model defaults
+
+### Thinking Defaults
+
+| Provider | Default |
+|---|---|
+| Anthropic Claude 4.6 (+ Bedrock) | `adaptive` |
+| Other reasoning-capable models | `low` |
+
+Override per-agent: `agents.list[].thinking` or per-request via `/model`.
+
+### OpenAI WebSocket Transport
+
+OpenAI Responses API uses WebSocket-first by default (`transport: "auto"` with SSE fallback):
+
+```json5
+{
+  agents: {
+    defaults: {
+      params: {
+        openaiWsWarmup: true,   // Optional WS warm-up (default on for openai/*)
+      },
+    },
+  },
+}
+```
+
 ## Model Fallbacks
 
 When primary model fails, Gateway tries fallbacks in order:
@@ -158,6 +203,13 @@ openclaw models status --probe-provider anthropic
 ## Transcription Providers
 
 - Deepgram for audio transcription
+- Mistral supports voice and memory embeddings (v2026.2.22+)
+
+### Moonshot AI (Kimi)
+
+- Supports `web_search` provider: `provider: "kimi"`
+- Native video understanding provider
+- Two-step `$web_search` tool flow with citation extraction
 
 ## Local Models
 
@@ -166,6 +218,21 @@ openclaw models status --probe-provider anthropic
 ```bash
 # Install Ollama, then:
 openclaw models set ollama/llama3
+```
+
+Ollama also supports **memory embeddings** (v2026.3.2):
+
+```json5
+{
+  agents: {
+    defaults: {
+      memorySearch: {
+        provider: "ollama",      // Use Ollama for memory embedding
+        // fallback: "ollama",   // Or as fallback only
+      },
+    },
+  },
+}
 ```
 
 ### vLLM

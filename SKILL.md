@@ -18,6 +18,8 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [exec_approvals.md](references/exec_approvals.md) | Exec approvals: allowlists, safe bins, approval flow |
 | [browser.md](references/browser.md) | Browser tool: profiles, CDP, relay, SSRF, Control API |
 | [web_tools.md](references/web_tools.md) | Web tools: Brave, Perplexity, Gemini search providers |
+| [pdf_tool.md](references/pdf_tool.md) | PDF tool: native/fallback modes, config, page filtering |
+| [elevated.md](references/elevated.md) | Elevated mode: /elevated directives, sandbox breakout |
 | [lobster.md](references/lobster.md) | Lobster: typed workflow runtime with approvals |
 | [llm_task.md](references/llm_task.md) | LLM Task: JSON-only LLM step for structured output |
 | [openprose.md](references/openprose.md) | OpenProse: multi-agent program runtime |
@@ -33,6 +35,7 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [gateway_ops.md](references/gateway_ops.md) | Gateway operations |
 | [remote_access.md](references/remote_access.md) | Remote access, SSH, Tailscale, web dashboard |
 | [sessions.md](references/sessions.md) | Session management, DM isolation, lifecycle, compaction |
+| [hooks.md](references/hooks.md) | Hooks: internal event hooks, HTTP webhooks, authoring, CLI |
 | [automation.md](references/automation.md) | Cron jobs, webhooks, Gmail Pub/Sub |
 | [acp_agents.md](references/acp_agents.md) | ACP agents: spawn external AI runtimes (Codex, Claude, etc.) |
 | [install.md](references/install.md) | Installation, updating, rollback, migration, uninstall |
@@ -75,6 +78,13 @@ openclaw tui                       # Terminal UI (interactive REPL)
 openclaw agent                     # Direct agent interaction via CLI
 openclaw health                    # Health check
 openclaw usage                     # Usage tracking
+openclaw config validate           # Validate config file
+openclaw config file               # Print active config path
+openclaw sessions cleanup          # Session disk cleanup
+openclaw agents bindings           # Agent-channel bindings
+openclaw agents bind               # Bind agent to account
+openclaw agents unbind             # Unbind agent
+openclaw update --dry-run          # Preview update
 ```
 
 ### Default Gateway
@@ -303,5 +313,6 @@ For chat slash commands (/new, /model, /acp, etc.), see [references/slash_comman
 | `OPENCLAW_VERBOSE` | Verbose logging |
 | `OPENCLAW_LOG_FILE` | File logging path |
 | `OPENCLAW_LOG_LEVEL` | Log level control |
+| `OPENCLAW_SHELL` | Set by OpenClaw in exec/acp/tui runtimes |
 | `BRAVE_API_KEY` | For web_search tool |
 | `FIRECRAWL_API_KEY` | For Firecrawl anti-bot fallback |

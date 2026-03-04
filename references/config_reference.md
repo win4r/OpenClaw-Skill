@@ -25,6 +25,19 @@ Path: `~/.openclaw/openclaw.json` (JSON5 format)
 
 Override via `OPENCLAW_CONFIG_PATH` env var.
 
+### Config Validation
+
+```bash
+openclaw config validate              # Validate config before gateway startup
+openclaw config validate --json       # Machine-readable output
+openclaw config file                  # Print active config file path
+```
+
+If config is invalid:
+- Gateway does not boot
+- Only diagnostic commands work (`openclaw doctor`, `openclaw logs`, `openclaw health`, `openclaw status`)
+- Run `openclaw doctor --fix` to apply repairs
+
 ## Gateway Section
 
 ```json5
@@ -61,7 +74,14 @@ Override via `OPENCLAW_CONFIG_PATH` env var.
     trustedProxies: [],         // IP addresses of trusted reverse proxies
     reload: {
       mode: "hybrid",          // "off" | "hot" | "restart" | "hybrid"
+      debounceMs: 300,
     },
+    http: {
+      securityHeaders: {
+        strictTransportSecurity: "max-age=63072000",  // Optional HSTS for direct HTTPS
+      },
+    },
+    webhooks: { enabled: false },   // Enable inbound HTTP webhook endpoints
   },
 }
 ```
@@ -76,6 +96,14 @@ Override via `OPENCLAW_CONFIG_PATH` env var.
 - Non-loopback binds REQUIRE auth
 - `"trusted-proxy"`: delegate to identity-aware reverse proxy
 - Rate limiter blocks per client IP, returns `429 + Retry-After`
+
+**Config hot reload** (mode: `hybrid`):
+- Hot-applies: `agents`, `models`, `routing`, `hooks`, `cron`, `session`, `messages`, `tools`, `browser`, `skills`, `audio`, `talk`, `ui`, `logging`, `identity`, `bindings`
+- Requires restart: `gateway.*`, `discovery`, `canvasHost`, `plugins`, `gateway.reload`, `gateway.remote`, `channels.*`
+
+**Container health probes** (built-in, always available):
+- `GET /health`, `GET /healthz` — liveness check
+- `GET /ready`, `GET /readyz` — readiness check
 
 ## Channels Section
 
@@ -103,8 +131,11 @@ Override via `OPENCLAW_CONFIG_PATH` env var.
       botToken: "123:abc",
       dmPolicy: "pairing",
       allowFrom: ["tg:123"],
-      streaming: "off",         // "off" | "partial" | "block" | "progress"
+      streaming: "partial",     // Default changed to "partial" in v2026.3.2
+                                // "off" | "partial" | "block" | "progress"
       proxy: "socks5://user:pass@host:1080",
+      // Per-DM topic config (v2026.3.1+):
+      // direct: { allowlists, dmPolicy, skills, systemPrompt, requireTopic }
     },
     discord: {
       enabled: true,
@@ -157,13 +188,25 @@ Override via `OPENCLAW_CONFIG_PATH` env var.
       imageModel: {
         primary: "openai/dall-e-3",
       },
-      models: {                 // Model catalog + allowlist for /model
+      pdfModel: {                // v2026.3.2+: dedicated PDF model
+        primary: "anthropic/claude-opus-4-6",
+        fallbacks: ["openai/gpt-5-mini"],
+      },
+      pdfMaxBytesMb: 10,         // Per-PDF size cap
+      pdfMaxPages: 20,           // Max pages for extraction fallback
+      models: {                  // Model catalog + allowlist for /model
         "anthropic/claude-sonnet-4-5": { alias: "Sonnet" },
         "openai/gpt-5.2": { alias: "GPT" },
       },
-      imageMaxDimensionPx: 1200,  // Image downscaling (reduces vision-token usage)
+      imageMaxDimensionPx: 1200, // Image downscaling (reduces vision-token usage)
+      elevatedDefault: "off",    // Default elevated mode: "off" | "on" | "ask" | "full"
       heartbeat: {
         every: "30m",
+        directPolicy: "allow",   // "allow" | "block" — DM delivery for heartbeat
+        lightContext: false,     // Lightweight bootstrap (only HEARTBEAT.md) for heartbeat runs
+      },
+      params: {                  // Per-agent params merged on top of model defaults
+        cacheRetention: 300,     // Prompt cache TTL in seconds
       },
       compaction: { ... },
       contextPruning: { ... },
@@ -234,6 +277,10 @@ Override via `OPENCLAW_CONFIG_PATH` env var.
     dmScope: "main",           // "main" | "per-channel-peer" | "per-account-channel-peer"
     mainKey: "main",           // Key for the main session
     historyLimit: 100,
+    maintenance: {
+      maxDiskBytes: 500000000,   // Session disk budget (500MB)
+      highWaterBytes: 400000000, // Trigger cleanup above this
+    },
   },
 }
 ```
@@ -307,11 +354,15 @@ See [references/secrets.md](secrets.md) for full details.
 
 ## Hooks Section
 
+See [references/hooks.md](hooks.md) for full details.
+
 ```json5
 {
   hooks: {
-    gmail: { ... },
-    // Webhook integrations
+    enabled: true,              // Enable HTTP webhook endpoints
+    token: "your-webhook-token",// Auth for webhooks
+    path: "/hooks",             // Custom path prefix
+    dirs: ["/extra/hooks"],     // Additional hook discovery dirs
   },
 }
 ```
@@ -324,8 +375,39 @@ See [references/secrets.md](secrets.md) for full details.
     jobs: [
       { schedule: "0 9 * * *", message: "Good morning!", channel: "whatsapp" },
     ],
+    webhookToken: "your-token",  // Auth for webhook delivery mode
   },
 }
+```
+
+## Security Section
+
+```json5
+{
+  security: {
+    trust_model: {
+      multi_user_heuristic: true,  // Flag likely shared-user ingress
+    },
+  },
+}
+```
+
+## Update Section
+
+```json5
+{
+  update: {
+    auto: {
+      enabled: false,           // Default off
+      // Stable: rollout delay+jitter; Beta: hourly cadence
+    },
+  },
+}
+```
+
+```bash
+openclaw update               # Manual update
+openclaw update --dry-run     # Preview without mutating
 ```
 
 ## Config Includes
@@ -339,4 +421,27 @@ Split config across files using `$include`:
 }
 ```
 
-Env var substitution works inside `$include` files.
+### Env Var Substitution
+
+- Syntax: `${VAR_NAME}` in config values
+- Only uppercase names matched: `[A-Z_][A-Z0-9_]*`
+- Missing/empty vars throw error at load time
+- Escape with `$${VAR}` for literal output
+- Works inside `$include` files
+- Inline: `"${BASE}/v1"` → `"https://api.example.com/v1"`
+
+### Secret Refs (env, file, exec)
+
+```json5
+{
+  models: {
+    providers: {
+      openai: {
+        apiKey: { source: "env", provider: "default", id: "OPENAI_API_KEY" },
+      },
+    },
+  },
+}
+```
+
+Sources: `env`, `file`, `exec`. See [secrets.md](secrets.md) for full details.
