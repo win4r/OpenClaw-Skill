@@ -101,22 +101,91 @@ Override priority: Job payload → Hook-specific defaults → Agent config defau
 - `model`: `provider/model` string or alias
 - `thinking`: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`
 
+### Advanced Features
+
+#### Lightweight Bootstrap
+
+Use `lightContext: true` in the payload to skip workspace bootstrap file injection — useful for simple chores that don't need full agent context.
+
+#### Tool Allowlists
+
+```bash
+openclaw cron add --name "Job" --tools exec,read     # Only allow exec and read
+openclaw cron edit <jobId> --clear-tools              # Remove tool restriction
+```
+
+#### Agent Pinning
+
+```bash
+openclaw cron add --name "Job" --agent ops            # Run under specific agent
+openclaw cron edit <jobId> --agent main                # Change agent binding
+```
+
+#### Stagger Control
+
+Top-of-hour cron expressions get a deterministic stagger window (up to 5 minutes) to reduce load spikes. Fixed-hour expressions like `0 7 * * *` remain exact.
+
+```bash
+openclaw cron add --name "Job" --cron "0 * * * *" --stagger 30s
+openclaw cron edit <jobId> --exact                     # Force staggerMs = 0
+```
+
+#### Custom Persistent Sessions
+
+Use a named session to maintain context across runs:
+
+```json
+{
+  "name": "Project monitor",
+  "schedule": { "kind": "every", "everyMs": 300000 },
+  "sessionTarget": "session:project-alpha-monitor",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Check project status and update the running log."
+  }
+}
+```
+
 ### Retry Policy
 
-- **Transient errors** (retried): network timeouts, rate limits, upstream 5xx
-- **Permanent errors** (no retry): auth failures, invalid config, model not found
-- Default: no config needed; built-in retries for transient errors
+**One-shot jobs:**
+- Transient errors (rate limit, overloaded, network, 5xx): retry up to 3 times with exponential backoff (30s, 1m, 5m)
+- Permanent errors (auth, validation): disable immediately
+
+**Recurring jobs:**
+- Any error: exponential backoff (30s, 1m, 5m, 15m, 60m) before next run
+- Job stays enabled; backoff resets after successful execution
 
 ### Configuration
 
 ```json5
 {
   cron: {
-    webhookToken: "your-token",     // Auth for webhook mode
-    stagger: { defaultMs: 0 },     // Default stagger
+    enabled: true,
+    store: "~/.openclaw/cron/jobs.json",
+    maxConcurrentRuns: 1,
+    retry: {
+      maxAttempts: 3,
+      backoffMs: [60000, 120000, 300000],
+      retryOn: ["rate_limit", "overloaded", "network", "server_error"],
+    },
+    webhookToken: "your-token",
+    sessionRetention: "24h",          // Isolation run-session pruning
+    runLog: {
+      maxBytes: "2mb",
+      keepLines: 2000,
+    },
   },
 }
 ```
+
+Disable cron: `cron.enabled: false` or env `OPENCLAW_SKIP_CRON=1`.
+
+### Cron Storage & Pruning
+
+- **Job store**: `~/.openclaw/cron/jobs.json` (Gateway-managed, manual edits only safe when Gateway stopped)
+- **Run history**: `~/.openclaw/cron/runs/<jobId>.jsonl` (auto-pruned by `runLog.maxBytes` / `runLog.keepLines`)
+- **Isolation session pruning**: default `24h` retention for `cron:<jobId>:run:<uuid>` sessions. Set `cron.sessionRetention: false` to disable.
 
 ### Troubleshooting
 
@@ -265,6 +334,33 @@ Every task follows: Execute -> Verify -> Report.
 
 ---
 
+---
+
+## Background Tasks
+
+Background tasks track detached agent runs (cron, webhooks, sub-agents, etc.).
+
+> **Note**: ClawFlow (`openclaw flows`) is deprecated. Use `openclaw tasks` instead.
+
+### CLI
+
+```bash
+openclaw tasks list                 # List tracked detached runs
+openclaw tasks show <lookup>        # Show specific task details
+openclaw tasks cancel <lookup>      # Cancel a running task
+openclaw tasks audit                # Identify problematic task runs
+```
+
+### Migration from ClawFlow
+
+| Old Command | New Command |
+|---|---|
+| `openclaw flows list` | `openclaw tasks list` |
+| `openclaw flows show` | `openclaw tasks show` |
+| `openclaw flows cancel` | `openclaw tasks cancel` |
+
+---
+
 ## Hooks
 
 Event-driven system for automating actions within the Gateway.
@@ -274,7 +370,9 @@ Event-driven system for automating actions within the Gateway.
 1. Bundled hooks
 2. Plugin hooks
 3. Managed hooks (`~/.openclaw/hooks/`)
-4. Workspace hooks (`<workspace>/hooks/`)
+4. Workspace hooks (`<workspace>/hooks/`, disabled by default)
+
+Workspace hooks can introduce new hook names but cannot override hooks from higher-precedence sources.
 
 ### Bundled Hooks
 
@@ -282,13 +380,52 @@ Event-driven system for automating actions within the Gateway.
 |---|---|
 | `session-memory` | Preserves context during session resets |
 | `bootstrap-extra-files` | Injects workspace files during init |
-| `command-logger` | Records commands to log file |
+| `command-logger` | Records commands to `~/.openclaw/logs/commands.log` (JSONL) |
 | `boot-md` | Executes BOOT.md at gateway start |
 
 ### Event Categories
 
 - **Command**: `command:new`, `command:reset`, `command:stop`
-- **Session**: `session:compact:before`, `session:compact:after`
+- **Session**: `session:compact:before`, `session:compact:after`, `session:patch`
 - **Agent**: `agent:bootstrap`
 - **Gateway**: `gateway:startup`
-- **Message**: `message:received`, `message:sent`
+- **Message**: `message:received`, `message:transcribed`, `message:preprocessed`, `message:sent`
+
+### Hook Structure
+
+```
+my-hook/
+├── HOOK.md          # Metadata (YAML frontmatter)
+└── handler.ts       # Implementation
+```
+
+### Hook Packs (npm Distribution)
+
+Hook packs are npm packages exporting multiple hooks via `openclaw.hooks` in `package.json`:
+
+```bash
+openclaw plugins install <hook-pack-spec>
+```
+
+### Plugin Hook API
+
+Beyond event listeners, plugins can register sequential hooks:
+
+| Hook | Purpose |
+|---|---|
+| `before_model_resolve` | Override model/provider before lookup |
+| `before_prompt_build` | Modify system prompt |
+| `before_tool_call` | Adjust parameters or block tool calls |
+| `tool_result_persist` | Transform tool results before transcript storage |
+
+28+ additional plugin hooks cover model I/O, lifecycle events, message flow, and subagent coordination.
+
+### CLI Commands
+
+```bash
+openclaw hooks list                 # Show all discovered hooks
+openclaw hooks enable <name>        # Activate a hook
+openclaw hooks disable <name>       # Deactivate a hook
+openclaw hooks info <name>          # Detailed hook info
+openclaw hooks check                # Eligibility summary
+```

@@ -132,7 +132,7 @@ Auth is **required by default** when binding to non-loopback.
 {
   gateway: {
     auth: {
-      mode: "token",                        // "token" or "password"
+      mode: "token",                        // "token", "password", or "trusted-proxy"
       token: "replace-with-long-random-token",
       // OR
       password: "your-password",
@@ -140,6 +140,10 @@ Auth is **required by default** when binding to non-loopback.
   },
 }
 ```
+
+**Trusted proxy mode**: For identity-aware reverse proxies, use `mode: "trusted-proxy"`. The proxy handles authentication and passes identity headers.
+
+**Auto-generated token**: If browser control is enabled and no `gateway.auth.token` is configured, OpenClaw auto-generates a token on startup to secure the browser control API.
 
 ### Environment Variables
 
@@ -599,9 +603,15 @@ Run `openclaw security audit --fix` to auto-set:
 
 ### mDNS/Bonjour Discovery
 
-When Gateway runs on macOS, mDNS can advertise the service. This is information disclosure.
+When Gateway runs on macOS, mDNS can advertise the service. Three broadcast modes:
 
-Mitigation: use `loopback` bind or firewall mDNS port.
+| Mode | Info Disclosed | Recommendation |
+|---|---|---|
+| `minimal` (default) | Basic discovery only, omits `cliPath` and `sshPort` | Recommended |
+| `full` (opt-in) | Includes filesystem paths and SSH availability | Only trusted networks |
+| `off` | Disables local discovery entirely | Maximum privacy |
+
+Minimal mode broadcasts enough for device discovery while protecting infrastructure details.
 
 ## Reverse Proxy Configuration
 
@@ -731,18 +741,28 @@ If CI fails: check `.secrets.baseline` for false positives, audit flagged items,
 ```bash
 openclaw gateway stop                   # Stop gateway
 openclaw channels logout --channel <c>  # Logout channels
+# Set gateway.bind: "loopback" until investigation completes
+# Switch risky DMs/groups to dmPolicy: "disabled" or require mentions
 ```
 
 ### 2. Rotate
 
-Assume compromise if secrets leaked. Rotate all API keys, tokens, passwords.
+```bash
+# Regenerate gateway.auth.token and restart
+# Rotate remote client secrets on dependent machines
+# Rotate provider/API credentials and auth-profiles.json entries
+```
 
 ### 3. Audit
 
 ```bash
+# Check logs
+cat /tmp/openclaw/openclaw-YYYY-MM-DD.log
+# Review transcripts
+ls ~/.openclaw/agents/<agentId>/sessions/*.jsonl
+# Re-run security audit
 openclaw security audit --deep
 openclaw secrets audit
-openclaw logs --limit 1000              # Review recent logs
 ```
 
 ### 4. Collect for Report

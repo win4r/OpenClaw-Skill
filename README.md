@@ -8,13 +8,17 @@ A comprehensive **Agent Skill** for installing, configuring, operating, and trou
 
 This is an Agent Skill designed for AI coding assistants (like Claude with Antigravity). Once installed, the AI assistant gains deep knowledge of OpenClaw and can help you with:
 
-- 🔧 **Installation & Updates** — Install, upgrade, or migrate OpenClaw
-- ⚙️ **Configuration** — Edit `openclaw.json`, set up models, manage secrets
-- 📡 **Channel Management** — Set up WhatsApp, Telegram, Discord, Slack, iMessage, and 15+ other channels
-- 🚀 **Gateway Operations** — Start, stop, restart, health check, remote access
-- 🤖 **Multi-Agent Routing** — Configure multiple agents with isolated workspaces and sessions
-- 🔒 **Security Hardening** — Audit, lock down access, manage tokens and secrets
-- 🔍 **Troubleshooting** — Diagnose and fix common errors from CLI and Gateway
+- **Installation & Updates** — Install, upgrade, or migrate OpenClaw
+- **Configuration** — Edit `openclaw.json`, set up models, manage secrets
+- **Channel Management** — Set up WhatsApp, Telegram, Discord, Slack, iMessage, and 15+ other channels
+- **Gateway Operations** — Start, stop, restart, health check, remote access
+- **Multi-Agent Routing** — Configure multiple agents with isolated workspaces and sessions
+- **ACP Agents** — Spawn external AI runtimes (Codex, Claude Code, Gemini CLI, 14+ harnesses)
+- **Browser Automation** — Multi-profile browser control, Chrome MCP existing-session, snapshots/refs
+- **Plugin System** — Capability model, context engine plugins, SDK, hook API
+- **Automation** — Cron jobs, standing orders, background tasks, webhooks, hooks
+- **Security Hardening** — Audit, lock down access, manage tokens, trusted proxy, incident response
+- **Troubleshooting** — Diagnose and fix common errors from CLI and Gateway
 
 ## Skill Structure
 
@@ -48,7 +52,7 @@ OpenClaw-Skill/
     └── ... (51 reference files total)
 ```
 
-**Total: ~5,500+ lines** of structured reference covering all core OpenClaw functionality.
+**Total: ~6,000+ lines** of structured reference covering all core OpenClaw functionality.
 
 ## Installation
 
@@ -81,6 +85,8 @@ Once installed, just ask naturally:
 | "Gateway is not responding" | Runs diagnostic command ladder: status → logs → doctor → channels probe |
 | "Lock down my OpenClaw security" | Runs security audit, applies hardened baseline, fixes permissions |
 | "Add a second agent for work" | Creates agent, sets up workspace, configures bindings, restarts |
+| "Spawn a Codex ACP session" | Configures acpx plugin, sets permissions, spawns bound session |
+| "Attach browser to my Chrome" | Sets up `user` profile with Chrome MCP existing-session driver |
 | "EADDRINUSE error" | Identifies port conflict, runs `openclaw gateway --force` or changes port |
 
 ## Key Commands Quick Reference
@@ -141,7 +147,12 @@ This skill is built from the official [OpenClaw Documentation](https://docs.open
 - [ACP Agents](https://docs.openclaw.ai/tools/acp-agents)
 - [Sandboxing](https://docs.openclaw.ai/gateway/sandboxing)
 - [Automation (Cron, Webhooks, Hooks)](https://docs.openclaw.ai/automation/cron-jobs)
+- [Background Tasks](https://docs.openclaw.ai/automation/tasks)
 - [Standing Orders](https://docs.openclaw.ai/automation/standing-orders)
+- [Context Engine](https://docs.openclaw.ai/concepts/context)
+- [Plugin Architecture](https://docs.openclaw.ai/plugins/architecture)
+- [Browser Tool](https://docs.openclaw.ai/tools/browser)
+- [Agent Send](https://docs.openclaw.ai/tools/agent-send)
 - [Security](https://docs.openclaw.ai/gateway/security)
 - [Formal Verification](https://docs.openclaw.ai/security/formal-verification)
 - [Troubleshooting](https://docs.openclaw.ai/gateway/troubleshooting)

@@ -31,13 +31,54 @@ openclaw plugins install @openclaw/voice-call  # Install from npm
 
 Plugins can register:
 - Gateway RPC methods
-- Gateway HTTP handlers
+- Gateway HTTP handlers / routes
 - Agent tools
 - CLI commands
 - Background services
 - Optional config validation
 - Skills (via plugin manifest `skills` directories)
 - Auto-reply commands (execute without invoking AI agent)
+- Capabilities (see below)
+
+### Capability Registration Model
+
+Plugins register against specific capability types:
+
+| Capability | Registration Method | Examples |
+|---|---|---|
+| Text inference | `api.registerProvider(...)` | openai, anthropic |
+| CLI backend | `api.registerCliBackend(...)` | openai, anthropic |
+| Speech (TTS/STT) | `api.registerSpeechProvider(...)` | elevenlabs, microsoft |
+| Media understanding | `api.registerMediaUnderstandingProvider(...)` | openai, google |
+| Image generation | `api.registerImageGenerationProvider(...)` | openai, google |
+| Web search | `api.registerWebSearchProvider(...)` | google |
+| Messaging/Channel | `api.registerChannel(...)` | msteams, matrix |
+
+### Plugin Shapes
+
+| Shape | Description |
+|---|---|
+| `plain-capability` | Registers exactly one capability type |
+| `hybrid-capability` | Registers multiple capability types |
+| `hook-only` | Registers only hooks, no capabilities |
+| `non-capability` | Registers tools, commands, or services but no capabilities |
+
+Use `openclaw plugins inspect <id>` to view a plugin's shape.
+
+### Context Engine Plugins
+
+Plugins can register custom context engines for controlling how OpenClaw builds model context:
+
+```ts
+api.registerContextEngine("my-engine", () => ({
+  info: { id: "my-engine", name: "My Context Engine", ownsCompaction: true },
+  async ingest() { return { ingested: true }; },
+  async assemble({ messages }) { return { messages, estimatedTokens: 0 }; },
+  async compact() { return { ok: true, compacted: false }; },
+}));
+```
+
+Select via: `plugins.slots.contextEngine: "my-engine"`
 
 ## Plugin IDs
 
@@ -136,16 +177,30 @@ A plugin can be:
 
 ## Runtime Helpers
 
-```javascript
-const result = await api.runtime.tts.textToSpeechTelephony({
-  text: "Hello from OpenClaw",
-  cfg: api.config,
-});
-```
+Plugins access core helpers through `api.runtime`:
 
-- Uses core `messages.tts` configuration (OpenAI or ElevenLabs).
-- Returns PCM audio buffer + sample rate.
-- Edge TTS is not supported for telephony.
+```javascript
+// TTS
+const result = await api.runtime.tts.textToSpeech({ text: "Hello", cfg: api.config });
+const telephony = await api.runtime.tts.textToSpeechTelephony({ text: "Hello", cfg: api.config });
+const voices = await api.runtime.tts.listVoices(cfg);
+
+// Media Understanding
+await api.runtime.mediaUnderstanding.describeImageFile({ path, model });
+await api.runtime.mediaUnderstanding.describeVideoFile({ path, model });
+await api.runtime.mediaUnderstanding.transcribeAudioFile({ path, model });
+
+// Subagent (requires plugins.entries.<id>.subagent.allowModelOverride: true)
+await api.runtime.subagent.run({ task, model });
+
+// Web Search
+const providers = await api.runtime.webSearch.listProviders();
+const results = await api.runtime.webSearch.search({ query, provider });
+
+// Image Generation
+const image = await api.runtime.imageGeneration.generate({ prompt, model });
+const imgProviders = await api.runtime.imageGeneration.listProviders();
+```
 
 ## Naming Conventions
 
@@ -157,6 +212,59 @@ const result = await api.runtime.tts.textToSpeechTelephony({
 
 Plugins can declare skills via `skills/<name>/SKILL.md` in the plugin directory. Skills are loaded/unloaded with `plugins.entries.<id>.enabled`.
 
+## Provider Runtime Hooks
+
+Plugins get access to 24+ provider hooks covering the full model lifecycle. Key hooks:
+
+| Hook | Purpose |
+|---|---|
+| `catalog` | Provide model catalog |
+| `before_model_resolve` | Override provider/model before lookup |
+| `before_prompt_build` | Modify system prompt |
+| `before_tool_call` | Intercept tool calls (block/approve) |
+| `after_tool_call` | Process tool results |
+| `tool_result_persist` | Transform tool results before transcript |
+| `message_received` / `message_sent` | Message flow hooks |
+| `session_start` / `session_end` | Session lifecycle |
+| `gateway_start` / `gateway_stop` | Gateway lifecycle |
+
+### Gateway HTTP Routes
+
+```typescript
+api.registerHttpRoute({
+  path: "/acme/webhook",
+  auth: "plugin",
+  match: "exact",
+  handler: async (_req, res) => {
+    res.statusCode = 200;
+    res.end("ok");
+    return true;
+  },
+});
+```
+
+## Channel Catalog Metadata
+
+Channel plugins can declare catalog metadata for discovery:
+
+```json
+{
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "channel": {
+      "id": "nextcloud-talk",
+      "label": "Nextcloud Talk",
+      "docsPath": "/channels/nextcloud-talk",
+      "blurb": "Self-hosted chat via Nextcloud Talk webhook bots.",
+      "order": 65,
+      "aliases": ["nc-talk", "nc"]
+    }
+  }
+}
+```
+
+External catalogs merge from `~/.openclaw/mpm/catalog.json` or via `OPENCLAW_PLUGIN_CATALOG_PATHS`.
+
 ## Distribution (npm)
 
 - Main package: `openclaw` (this repo)
@@ -167,6 +275,23 @@ Requirements:
 - Entry files can be `.js` or `.ts` (jiti loads at runtime).
 - `openclaw plugins install <npm-spec>` uses `npm pack`, extracts to `~/.openclaw/extensions/<id>/`.
 - Scoped packages are normalized to the unscoped id for `plugins.entries.*`.
+- Security: `openclaw plugins install` uses `npm install --ignore-scripts` to prevent lifecycle script execution.
+
+### Package Packs
+
+A single npm package can export multiple plugins:
+
+```json
+{
+  "name": "my-pack",
+  "openclaw": {
+    "extensions": ["./src/safety.ts", "./src/tools.ts"],
+    "setupEntry": "./src/setup-entry.ts"
+  }
+}
+```
+
+Every `openclaw.extensions` entry must stay inside the plugin directory after symlink resolution.
 
 ## Plugin Manifest (`openclaw.plugin.json`)
 

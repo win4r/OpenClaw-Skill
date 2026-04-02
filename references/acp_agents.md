@@ -150,16 +150,43 @@ When a `/acp` command refers to a target session, resolution order:
 
 ## Supported Harnesses
 
+The acpx backend supports these built-in harness aliases:
+
 | Harness | Agent ID |
 |---|---|
 | Pi (OpenClaw internal) | `pi` |
 | Claude Code | `claude` |
 | Codex | `codex` |
-| OpenCode | `opencode` |
+| Copilot | `copilot` |
+| Cursor | `cursor` |
+| Droid | `droid` |
 | Gemini CLI | `gemini` |
+| iFlow | `iflow` |
+| Kilocode | `kilocode` |
 | Kimi | `kimi` |
+| Kiro | `kiro` |
+| OpenClaw | `openclaw` |
+| OpenCode | `opencode` |
+| Qwen | `qwen` |
 
 Custom agents can be added with `--agent <command>`.
+
+## Session Resumption
+
+Use `resumeSessionId` to continue a previous ACP session. The agent replays its conversation history via `session/load`, picking up with full context:
+
+```json
+{
+  "task": "Continue from where we left off",
+  "runtime": "acp",
+  "agentId": "codex",
+  "resumeSessionId": "previous-session-uuid"
+}
+```
+
+## Sandbox Limitations
+
+ACP sessions currently run on the **host runtime**, not inside the OpenClaw sandbox. Sandboxed sessions cannot spawn ACP sessions — use `runtime="subagent"` instead.
 
 ## Required Config
 

@@ -8,13 +8,17 @@
 
 这是一个专为 AI 编程助手（如 Claude + Antigravity）设计的 Agent Skill。安装后，AI 助手会获得 OpenClaw 的深度知识，能帮你完成：
 
-- 🔧 **安装与升级** — 安装、升级或迁移 OpenClaw
-- ⚙️ **配置管理** — 编辑 `openclaw.json`、设置模型、管理密钥
-- 📡 **频道管理** — 配置 WhatsApp、Telegram、Discord、Slack、iMessage 等 20+ 频道
-- 🚀 **Gateway 运维** — 启动、停止、重启、健康检查、远程访问
-- 🤖 **多 Agent 路由** — 配置多个 Agent，隔离工作区和会话
-- 🔒 **安全加固** — 审计、访问控制、Token 和密钥管理
-- 🔍 **故障排查** — 诊断和修复 CLI 及 Gateway 的常见错误
+- **安装与升级** — 安装、升级或迁移 OpenClaw
+- **配置管理** — 编辑 `openclaw.json`、设置模型、管理密钥
+- **频道管理** — 配置 WhatsApp、Telegram、Discord、Slack、iMessage 等 20+ 频道
+- **Gateway 运维** — 启动、停止、重启、健康检查、远程访问
+- **多 Agent 路由** — 配置多个 Agent，隔离工作区和会话
+- **ACP Agents** — 启动外部 AI 运行时（Codex、Claude Code、Gemini CLI，14+ 运行时）
+- **浏览器自动化** — 多 Profile 浏览器控制、Chrome MCP 现有会话、快照/Refs
+- **插件系统** — 能力模型、Context Engine 插件、SDK、Hook API
+- **自动化** — 定时任务、Standing Orders、后台任务、Webhooks、Hooks
+- **安全加固** — 审计、访问控制、受信代理、事件响应
+- **故障排查** — 诊断和修复 CLI 及 Gateway 的常见错误
 
 ## Skill 结构
 
@@ -48,7 +52,7 @@ OpenClaw-Skill/
     └── ... (共 51 个参考文件)
 ```
 
-**共计约 5,500+ 行**结构化参考文档，覆盖 OpenClaw 所有核心功能。
+**共计约 6,000+ 行**结构化参考文档，覆盖 OpenClaw 所有核心功能。
 
 ## 安装方法
 

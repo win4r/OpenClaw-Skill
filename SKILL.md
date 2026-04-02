@@ -16,14 +16,14 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [tools.md](references/tools.md) | Tools inventory (profiles, groups, all built-in tools) |
 | [exec.md](references/exec.md) | Exec tool: parameters, config, PATH, security, process tool |
 | [exec_approvals.md](references/exec_approvals.md) | Exec approvals: allowlists, safe bins, approval flow |
-| [browser.md](references/browser.md) | Browser tool: profiles, CDP, relay, SSRF, Control API |
+| [browser.md](references/browser.md) | Browser plugin: profiles, CDP, Chrome MCP, snapshots, SSRF, Control API |
 | [web_tools.md](references/web_tools.md) | Web tools: Brave, Perplexity, Gemini search providers |
 | [pdf_tool.md](references/pdf_tool.md) | PDF tool: native/fallback modes, config, page filtering |
 | [elevated.md](references/elevated.md) | Elevated mode: /elevated directives, sandbox breakout |
 | [lobster.md](references/lobster.md) | Lobster: typed workflow runtime with approvals |
 | [llm_task.md](references/llm_task.md) | LLM Task: JSON-only LLM step for structured output |
 | [openprose.md](references/openprose.md) | OpenProse: multi-agent program runtime |
-| [plugins.md](references/plugins.md) | Plugins: official list, config, manifest, CLI, authoring |
+| [plugins.md](references/plugins.md) | Plugins: capability model, official list, config, hooks, SDK, authoring |
 | [skills.md](references/skills.md) | Skills: locations, config, ClawHub, watcher, token impact |
 | [providers.md](references/providers.md) | Model provider setup |
 | [multi_agent.md](references/multi_agent.md) | Multi-agent routing |
@@ -36,8 +36,8 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [remote_access.md](references/remote_access.md) | Remote access, SSH, Tailscale, web dashboard |
 | [sessions.md](references/sessions.md) | Session management, DM isolation, lifecycle, compaction |
 | [hooks.md](references/hooks.md) | Hooks: internal event hooks, HTTP webhooks, authoring, CLI |
-| [automation.md](references/automation.md) | Cron jobs, webhooks, Gmail Pub/Sub |
-| [acp_agents.md](references/acp_agents.md) | ACP agents: spawn external AI runtimes (Codex, Claude, etc.) |
+| [automation.md](references/automation.md) | Cron jobs, webhooks, Gmail Pub/Sub, background tasks, standing orders |
+| [acp_agents.md](references/acp_agents.md) | ACP agents: spawn external AI runtimes (Codex, Claude, Gemini, 14+ harnesses) |
 | [install.md](references/install.md) | Installation, updating, rollback, migration, uninstall |
 | [web_ui.md](references/web_ui.md) | Web surfaces: Dashboard, Control UI, WebChat |
 | [slash_commands.md](references/slash_commands.md) | Chat slash commands (/new, /model, /acp, etc.) |
@@ -46,7 +46,7 @@ OpenClaw is a self-hosted, open-source (MIT) gateway that routes AI agents acros
 | [subagents.md](references/subagents.md) | Sub-agents: nested spawning, thread binding, announce, tool policy |
 | [memory.md](references/memory.md) | Memory system, vector search, hybrid BM25, compaction, QMD backend |
 | [architecture.md](references/architecture.md) | Gateway architecture, wire protocol, pairing, invariants |
-| [agent_runtime.md](references/agent_runtime.md) | Agent runtime, bootstrap files, agent loop, hooks, timeouts |
+| [agent_runtime.md](references/agent_runtime.md) | Agent runtime, bootstrap files, agent loop, context engine, hooks, timeouts |
 | [streaming.md](references/streaming.md) | Streaming + chunking: block streaming, coalescing, preview modes |
 | [queue.md](references/queue.md) | Command queue: modes (steer/followup/collect), concurrency, per-session |
 | [model_failover.md](references/model_failover.md) | Model failover, OAuth, auth profiles, cooldowns, billing disables |
@@ -112,6 +112,11 @@ openclaw system heartbeat last     # Last heartbeat info
 openclaw system heartbeat now      # Trigger heartbeat immediately
 openclaw memory search <query>     # CLI memory search
 openclaw docs <query>              # Search OpenClaw docs
+openclaw tasks list                # List background/detached task runs
+openclaw tasks show <id>           # Show specific task details
+openclaw tasks cancel <id>         # Cancel a running task
+openclaw tasks audit               # Identify problematic task runs
+openclaw agent --message "..."     # Run single agent turn (scripted/testing)
 openclaw nodes pending             # List pending pairing requests
 openclaw nodes approve <id>        # Approve node pairing
 openclaw nodes status              # Show all paired nodes
@@ -348,6 +353,7 @@ For channel routing and session keys, see [references/channel_routing.md](refere
 | `device identity required` | Missing device auth | Ensure client completes connect.challenge flow |
 | No replies from bot | Pairing/allowlist/mention gating | Check `openclaw pairing list`, DM policy, mention patterns |
 | `Embedding provider authentication failed (401)` | `.env` has placeholder API key (e.g. `your-jina-api-key-here`) | Replace with real API key in `~/.openclaw/.env`, restart Gateway |
+| `openclaw flows list` / `ClawFlow` references | ClawFlow is deprecated | Use `openclaw tasks list/show/cancel/audit` instead |
 | `config change requires gateway restart (plugins.*)` | Plugin config changes can't hot-reload | Full `openclaw gateway restart` or `launchctl kickstart -k` |
 | `Bootstrap failed: 5: Input/output error` | LaunchAgent plist in stale/stuck state | `openclaw gateway install` then `launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway` |
 | `Missing env var "X" referenced at config path: ...` | `.env` missing or variable not defined | Add variable to `~/.openclaw/.env` and restart Gateway |
@@ -374,4 +380,7 @@ For channel routing and session keys, see [references/channel_routing.md](refere
 | `CLAWHUB_TOKEN` | ClawHub API token for CI/automation |
 | `CLAWHUB_WORKDIR` | ClawHub working directory override |
 | `OLLAMA_API_KEY` | For Ollama embeddings provider |
+| `OPENCLAW_SKIP_CRON` | Disable cron scheduler (set to `1`) |
+| `OPENCLAW_HIDE_BANNER` | Suppress banner output |
+| `OPENCLAW_SUPPRESS_NOTES` | Suppress informational notes |
 

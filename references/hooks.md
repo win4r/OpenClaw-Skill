@@ -84,22 +84,23 @@ Internal hooks are small TypeScript scripts that execute when specific events fi
 |---|---|
 | `gateway:startup` | After channels have started and hooks are loaded |
 
+#### Session Events
+
+| Event | Trigger |
+|---|---|
+| `session:compact:before` | Before history summarization |
+| `session:compact:after` | After compaction completes |
+| `session:patch` | Session properties modified |
+
 #### Message Events
 
 | Event | Trigger |
 |---|---|
 | `message` | Any message event (wildcard listener) |
 | `message:received` | Inbound message received from any channel (early pipeline) |
-| `message:transcribed` | Message fully processed, including audio transcription |
+| `message:transcribed` | Audio transcription complete |
 | `message:preprocessed` | After all media and link understanding is complete |
-
-#### Future Events (Planned)
-
-| Event | Trigger |
-|---|---|
-| `session:start` | When a new session begins |
-| `session:end` | When a session concludes |
-| `agent:error` | When an agent encounters an error |
+| `message:sent` | Outbound message delivered |
 
 ### Hook Directory Structure
 
@@ -459,6 +460,28 @@ curl -X POST http://127.0.0.1:18789/hooks/agent \
 **Hook**: `boot-md` (bundled)
 **Event**: `gateway:startup`
 **Pattern**: Execute a `BOOT.md` instruction file to set up the agent's identity, load configurations, or run startup tasks.
+
+---
+
+## Plugin Hook API
+
+Beyond event listeners, plugins can register sequential hooks that modify processing. Key plugin hooks:
+
+| Hook | Purpose |
+|---|---|
+| `before_model_resolve` | Override model/provider before lookup |
+| `before_prompt_build` | Modify system prompt before agent execution |
+| `before_tool_call` | Adjust parameters or block tool calls (with optional user approval) |
+| `tool_result_persist` | Transform tool results before transcript storage (synchronous only) |
+| `before_agent_start` | Legacy compatibility hook |
+| `agent_end` | Inspect final messages and run metadata |
+| `before_compaction` / `after_compaction` | Observe/annotate compaction cycles |
+| `after_tool_call` | Intercept tool results |
+| `message_received` / `message_sending` / `message_sent` | Inbound + outbound message hooks |
+| `session_start` / `session_end` | Session lifecycle boundaries |
+| `gateway_start` / `gateway_stop` | Gateway lifecycle events |
+
+28+ total hooks cover model I/O, lifecycle events, message flow, and subagent coordination.
 
 ---
 

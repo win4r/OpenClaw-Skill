@@ -15,19 +15,24 @@
 
 ### Bootstrap Files (Injected)
 
-Files injected into `agents.defaults.workspace`:
+Up to eight files auto-injected into `agents.defaults.workspace`:
 
 | File | Purpose |
 |---|---|
-| `AGENTS.md` | Operating instructions + "memory" |
+| `AGENTS.md` | Operating instructions, standing orders, memory |
 | `SOUL.md` | Persona, boundaries, tone |
 | `TOOLS.md` | User-maintained tool notes (e.g. imsg, sag, conventions) |
 | `BOOTSTRAP.md` | One-time first-run ritual (deleted after completion) |
 | `IDENTITY.md` | Agent name/vibe/emoji |
 | `USER.md` | User profile + preferred address |
+| `HEARTBEAT.md` | Heartbeat template and schedule |
+| `MEMORY.md` | Long-term memory index |
 
 - Created by `openclaw setup`.
+- Blank files are skipped. Large files are trimmed and truncated with a marker.
+- BOOTSTRAP.md is deleted post-completion; won't recreate unless the entire bootstrap file set is removed.
 - Skip bootstrap: `{ agent: { skipBootstrap: true } }`.
+- Truncation limits: 20,000 chars per file, 150,000 total by default.
 
 ### Skills
 
@@ -160,7 +165,25 @@ Files injected into `agents.defaults.workspace`:
 
 ## Context Engine
 
-Controls how OpenClaw builds model context for each run.
+Controls how OpenClaw builds model context for each run. "Context" = everything the model receives, constrained by the model's token limit.
+
+### What Counts Toward Context
+
+Everything sent to the model: system prompts, conversation history, tool calls/results, attachments, compaction summaries, and provider wrappers.
+
+### System Prompt Components
+
+Rebuilt each run: tool lists, skills metadata, workspace location, time info, and injected bootstrap files. Skills listed compactly with descriptions; full instructions load on-demand.
+
+### Inspection Commands
+
+| Command | Purpose |
+|---|---|
+| `/status` | Quick window fullness check |
+| `/context list` | Injected files and rough sizes |
+| `/context detail` | Per-file and per-tool breakdowns |
+| `/usage tokens` | Append token usage to replies |
+| `/compact` | Summarize older history to free space |
 
 ### Lifecycle Points
 
@@ -169,7 +192,7 @@ Controls how OpenClaw builds model context for each run.
 3. **Compact** — summarizes older history when context fills
 4. **After turn** — persists state, triggers background compaction
 
-### Plugin Registration
+### Pluggable Context Engines
 
 Plugins can register custom context engines:
 

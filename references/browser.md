@@ -1,6 +1,6 @@
 # Browser Tool — Detailed Reference
 
-Full browser automation via CDP (Chrome DevTools Protocol). OpenClaw manages a separate browser profile for the agent with deterministic tab control.
+Full browser automation via CDP (Chrome DevTools Protocol). The browser tool is a **bundled plugin** shipping enabled by default. OpenClaw manages a separate browser profile for the agent with deterministic tab control.
 
 ## What You Get
 
@@ -18,10 +18,24 @@ openclaw browser --browser-profile openclaw open https://example.com
 openclaw browser --browser-profile openclaw snapshot
 ```
 
-## Profiles: `openclaw` vs `chrome`
+## Plugin Loading Caveat
+
+The browser is a **bundled plugin**. If you set `plugins.allow`, you must include `"browser"`:
+
+```json5
+// BROKEN: browser tool missing
+{ plugins: { allow: ["telegram"] } }
+
+// FIXED: browser tool available
+{ plugins: { allow: ["telegram", "browser"] } }
+```
+
+Note: `tools.alsoAllow: ["browser"]` does NOT load the plugin — it only adjusts tool policy after plugin loading. Disable browser entirely with `plugins.entries.browser.enabled: false`.
+
+## Profiles: `openclaw` vs `user`
 
 - **`openclaw`**: Managed, isolated browser (no extension required).
-- **`chrome`**: Extension relay to your system browser (requires the OpenClaw extension attached to a tab).
+- **`user`**: Built-in Chrome MCP attach profile for your real signed-in Chrome session (uses `driver: "existing-session"`).
 
 ```json5
 { browser: { defaultProfile: "openclaw" } }
@@ -30,14 +44,47 @@ openclaw browser --browser-profile openclaw snapshot
 ### Profile Types
 
 - **openclaw-managed**: Dedicated Chromium instance with own user data dir + CDP port.
+- **existing-session**: Attach to a running Chromium browser via Chrome DevTools MCP (e.g., `user`, `brave` profiles).
 - **remote**: Explicit CDP URL (browser running elsewhere).
-- **extension relay**: Existing Chrome tab(s) via relay + Chrome extension.
 
 Notes:
 - `openclaw` profile is auto-created if missing.
-- `chrome` profile is built-in for the extension relay (points at `http://127.0.0.1:18792` by default).
+- `user` profile uses Chrome MCP auto-connect, targeting the default local Google Chrome profile.
 - Local CDP ports allocate from 18800–18899 by default.
 - Deleting a profile moves its local data directory to Trash.
+- Use `userDataDir` for Brave, Edge, Chromium, or non-default Chrome profile.
+
+### Existing-Session Profiles
+
+Attach to your real browser session via Chrome DevTools MCP:
+
+```json5
+{
+  browser: {
+    profiles: {
+      brave: {
+        driver: "existing-session",
+        attachOnly: true,
+        userDataDir: "~/Library/Application Support/BraveSoftware/Brave-Browser",
+        color: "#FB542B",
+      },
+    },
+  },
+}
+```
+
+Requirements:
+- Target browser is Chromium-based, version 144+
+- Remote debugging enabled in browser's inspect page
+- Accept the attach consent prompt in browser
+
+Live attach smoke test:
+```bash
+openclaw browser --browser-profile user start
+openclaw browser --browser-profile user status
+openclaw browser --browser-profile user tabs
+openclaw browser --browser-profile user snapshot --format ai
+```
 
 ## Configuration
 
@@ -61,6 +108,11 @@ Notes:
     profiles: {
       openclaw: { cdpPort: 18800, color: "#FF4500" },
       work:     { cdpPort: 18801, color: "#0066CC" },
+      user: {
+        driver: "existing-session",
+        attachOnly: true,
+        color: "#00AA00",
+      },
       remote:   { cdpUrl: "http://10.0.0.42:9222", color: "#00AA00" },
     },
   },
@@ -236,6 +288,31 @@ Profile selection: append `?profile=<name>` to any endpoint.
 - `dangerouslyAllowPrivateNetwork` defaults to `true` (trusted-network model).
 - Navigation is SSRF-guarded before navigation and re-checked on final URL.
 
+## Snapshots and Refs
+
+Two snapshot styles:
+
+**AI snapshot (numeric refs)**: `openclaw browser snapshot` (default `--format ai`)
+- Actions: `openclaw browser click 12`, `openclaw browser type 23 "hello"`
+- Internally resolved via Playwright's `aria-ref`
+
+**Role snapshot (role refs like `e12`)**: `openclaw browser snapshot --interactive`
+- Actions: `openclaw browser click e12`, `openclaw browser highlight e12`
+- Internally resolved via `getByRole(...)` (plus `nth()` for duplicates)
+- Add `--labels` to include a viewport screenshot with overlayed `e12` labels
+
+Refs are **not stable across navigations** — re-run `snapshot` after navigating.
+
+## Wait Power-Ups
+
+```bash
+openclaw browser wait "#main" \
+  --url "**/dash" \
+  --load networkidle \
+  --fn "window.ready===true" \
+  --timeout-ms 15000
+```
+
 ## CLI Quick Reference
 
 ```bash
@@ -243,9 +320,19 @@ openclaw browser status                              # Browser status
 openclaw browser start --browser-profile openclaw    # Start managed browser
 openclaw browser profiles                             # List profiles
 openclaw browser open <url>                           # Open URL
-openclaw browser snapshot                             # Take snapshot
+openclaw browser snapshot                             # Take AI snapshot
+openclaw browser snapshot --interactive               # Take role snapshot (e12 refs)
+openclaw browser snapshot --interactive --labels      # With viewport label overlay
 openclaw browser screenshot                           # Take screenshot
+openclaw browser screenshot --full-page               # Full page screenshot
 openclaw browser evaluate "<js>"                      # Run JavaScript
+openclaw browser click <ref>                          # Click element by ref
+openclaw browser type <ref> "text"                    # Type into element
+openclaw browser navigate <url>                       # Navigate to URL
+openclaw browser cookies get                          # Get cookies
+openclaw browser cookies set <json>                   # Set cookies
+openclaw browser trace start                          # Start trace recording
+openclaw browser trace stop                           # Stop trace recording
 ```
 
 ## Troubleshooting
