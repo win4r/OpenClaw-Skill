@@ -7,68 +7,100 @@
 
 ## Presence
 
+Lightweight, best-effort view of the Gateway and connected clients.
+
 ### Presence Fields
 
-Each presence entry contains information about a connected client, node, or the gateway itself.
+| Field | Description |
+|---|---|
+| `instanceId` | Stable client identifier (recommended for dedup) |
+| `host` | Human-friendly hostname |
+| `ip` | Best-effort IP address |
+| `version` | Client version string |
+| `deviceFamily` / `modelIdentifier` | Hardware info |
+| `mode` | `ui`, `webchat`, `cli`, `backend`, `probe`, `test`, `node` |
+| `lastInputSeconds` | Elapsed time since user activity |
+| `reason` | Source: `self`, `connect`, `node-connected`, `periodic` |
+| `ts` | Last update timestamp (ms) |
 
-### Producers (Where Presence Comes From)
+### Data Sources
 
-1. **Gateway self entry**: Gateway publishes its own presence on start.
-2. **WebSocket connect**: Each WS client registers presence on connect.
-3. **system-event beacons**: Periodic beacons from clients.
-4. **Node connects (`role: node`)**: Nodes register with device info and capabilities.
+1. **Gateway self entry**: Always seeded at startup so UIs show the gateway host
+2. **WebSocket connections**: Clients register presence on successful handshake
+3. **CLI**: Short one-off commands — `cli` mode is not turned into a presence entry
+4. **Node connections**: Nodes with `role: node` create presence entries
+5. **System events**: Clients send richer periodic beacons via `system-event` method
 
-### Merge + Dedupe Rules
+### Deduplication
 
-- `instanceId` is the dedup key to prevent duplicate entries.
-- Multiple connections from the same instance are merged.
+- Entries keyed by `instanceId` (case-insensitive)
+- Multiple connections from the same instance are merged
+- Missing stable identifiers cause duplicates
 
-### TTL and Bounded Size
+### Lifecycle
 
-- Entries have a configurable TTL and are pruned when expired.
-- Max entries are bounded to prevent memory issues.
+- **TTL**: entries exceeding 5 minutes are removed
+- **Size limit**: max 200 entries (oldest purged first)
+- Loopback remote addresses are ignored to prevent overwriting client-reported IPs
 
-### Consumers
+### Access
 
-- macOS app Instances tab shows connected clients.
-- Control UI shows connected clients and nodes.
-- CLI: `openclaw system presence`.
+```bash
+openclaw system presence              # View connected clients/nodes
+```
 
 ---
 
 ## Discovery & Transports
 
-### Discovery Inputs
+How clients learn where the Gateway is.
 
-How clients learn where the Gateway is:
+### Discovery Methods
 
 #### 1. Bonjour / mDNS (LAN Only)
 
-- Gateway advertises itself on the local network via Bonjour/mDNS.
-- macOS and iOS clients auto-discover Gateway on the same LAN.
+Gateway advertises itself on the local network via Bonjour/mDNS. macOS and iOS clients auto-discover Gateway on the same LAN.
+
+Broadcast modes:
+
+| Mode | Info Disclosed | Recommendation |
+|---|---|---|
+| `minimal` (default) | Basic discovery only | Recommended |
+| `full` (opt-in) | Includes `cliPath` and `sshPort` | Trusted networks only |
+| `off` | Disables local discovery | Maximum privacy |
+
+See [bonjour.md](bonjour.md) for TXT keys, wide-area DNS-SD, and debugging.
 
 #### 2. Tailnet (Cross-Network)
 
-- Gateway registers with Tailscale for cross-network access.
-- Clients discover Gateway via Tailscale MagicDNS.
+Gateway registers with Tailscale for cross-network access. Clients discover Gateway via Tailscale MagicDNS.
+
+```json5
+{
+  gateway: {
+    tailscale: {
+      mode: "serve",        // "off" | "serve" | "funnel"
+      resetOnExit: false,
+    },
+  },
+}
+```
 
 #### 3. Manual / SSH Target
 
-- Users manually configure the Gateway address.
-- SSH tunnel can be used as transport.
+Users manually configure the Gateway address or use SSH tunneling:
+
+```bash
+ssh -N -L 18789:127.0.0.1:18789 user@gateway-host
+```
 
 ### Transport Selection (Client Policy)
 
-- Clients choose between direct WS and SSH-tunneled WS.
-- Direct is preferred when available (LAN/Tailnet).
-- SSH fallback for remote access without Tailscale.
+- Direct WS preferred when available (LAN/Tailnet)
+- SSH fallback for remote access without Tailscale
+- All transports require standard WS handshake + auth tokens
 
-### Pairing + Auth (Direct Transport)
-
-- All transports require the standard WS handshake.
-- Auth tokens apply regardless of transport type.
-
-### Responsibilities by Component
+### Responsibilities
 
 | Component | Responsibility |
 |---|---|

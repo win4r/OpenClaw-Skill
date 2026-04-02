@@ -34,23 +34,105 @@ clawhub sync --all                   # Scan + publish updates
 
 `clawhub` operates on the `./skills` or `<workspace>/skills` directory.
 
-## Format (AgentSkills + Pi-compatible)
+## Creating Skills
+
+### Step-by-Step
+
+```bash
+# 1. Create directory
+mkdir -p ~/.openclaw/workspace/skills/my-skill
+
+# 2. Write SKILL.md (see format below)
+
+# 3. Load the skill
+/new                           # New session picks it up
+# or: openclaw gateway restart
+
+# 4. Verify
+openclaw skills list
+
+# 5. Test
+openclaw agent --message "test my skill"
+```
+
+## SKILL.md Format
 
 Skills use `SKILL.md` with YAML frontmatter:
 
 ```markdown
 ---
-name: my-skill
-description: What this skill does
+name: my_skill
+description: One-line description shown to the agent
 ---
 # My Skill
 
 Detailed instructions here...
 ```
 
+### Frontmatter Fields
+
+| Field | Required | Description |
+|---|---|---|
+| `name` | Yes | Unique identifier (snake_case) |
+| `description` | Yes | One-line description shown to the agent |
+| `homepage` | No | URL shown in macOS Skills UI |
+| `user-invocable` | No | Boolean (default: `true`); exposes as slash command |
+| `disable-model-invocation` | No | Boolean (default: `false`); hides from model prompt |
+| `command-dispatch` | No | Set to `tool` to bypass model and invoke directly |
+| `command-tool` | No | Tool name for direct dispatch |
+| `command-arg-mode` | No | `raw` (default); forwards unprocessed arguments |
+| `metadata` | No | Single-line JSON object (see gating below) |
+
+**Important**: The parser accepts **single-line frontmatter keys only**. The `metadata` field must be a single-line JSON object.
+
 ## Gating (Load-Time Filters)
 
-Skills can declare metadata for conditional loading (e.g., only load when certain conditions are met).
+Skills filter at load time using metadata gates:
+
+```json
+"metadata": {
+  "openclaw": {
+    "requires": {
+      "bins": ["ffmpeg"],
+      "env": ["OPENAI_API_KEY"],
+      "config": ["channels.telegram.botToken"]
+    }
+  }
+}
+```
+
+Available gates:
+
+| Gate | Description |
+|---|---|
+| `os` | Platform list: `["darwin"]`, `["linux"]`, `["win32"]` |
+| `requires.bins` | Commands that must exist on PATH |
+| `requires.anyBins` | At least one must exist |
+| `requires.env` | Env vars (or config-provided) |
+| `requires.config` | Config paths that must be truthy |
+| `always: true` | Force inclusion despite other gates |
+
+## Installer Specifications
+
+Skills can define installation methods for missing dependencies:
+
+```json
+"metadata": {
+  "openclaw": {
+    "install": [
+      {
+        "id": "brew",
+        "kind": "brew",
+        "formula": "ffmpeg",
+        "bins": ["ffmpeg"],
+        "label": "Install FFmpeg via Homebrew"
+      }
+    ]
+  }
+}
+```
+
+Supported installer kinds: `brew`, `node`, `go`, `uv`, `download`. Installers support platform filtering via `os` array.
 
 ## Config Overrides (~/.openclaw/openclaw.json)
 
@@ -134,6 +216,27 @@ total = 195 + Σ (97 + len(name) + len(description) + len(location))
 ## Managed Skills Lifecycle
 
 Skills installed via ClawHub or the Control UI go into `~/.openclaw/skills`.
+
+## Install Configuration
+
+```json5
+{
+  skills: {
+    install: {
+      preferBrew: true,       // Favor brew installers when available
+      nodeManager: "npm",     // Node installer: npm, pnpm, yarn, or bun
+    },
+  },
+}
+```
+
+## Sandboxed Skills & Environment Variables
+
+When sessions run in sandbox mode, skill processes execute within Docker, which does not inherit host `process.env`. Apply environment variables through:
+- `agents.defaults.sandbox.docker.env`
+- Per-agent `agents.list[].sandbox.docker.env`
+
+Global `env` and skill-specific `env`/`apiKey` apply to host runs exclusively.
 
 ## Config Reference
 

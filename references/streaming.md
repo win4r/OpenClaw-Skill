@@ -2,49 +2,111 @@
 
 > Source: https://docs.openclaw.ai/concepts/streaming
 
-## Block Streaming (Channel Messages)
+OpenClaw implements two separate streaming layers:
+- **Block streaming (channels)**: emits completed blocks as the assistant writes
+- **Preview streaming (Telegram/Discord/Slack)**: updates temporary preview messages during generation
 
-- Assistant deltas are streamed from pi-agent-core.
-- Block streaming emits partial replies to the chat channel as separate message "blocks".
-- Controlled by `agents.defaults.blockStreamingDefault` (default: `"off"`).
-- Break points: `text_end` or `message_end`.
+There is no true token-delta streaming to channel messages today.
 
-## Chunking Algorithm (Low/High Bounds)
+## Block Streaming Architecture
 
-- Messages are split into chunks based on configurable low/high character bounds.
-- `agents.defaults.blockStreamingChunk` controls chunk size parameters.
-- Long replies are automatically split to stay within channel message limits.
+```
+Model output
+  -> text_delta/events
+       |-- (blockStreamingBreak=text_end)
+       |    -> chunker emits blocks as buffer grows
+       |-- (blockStreamingBreak=message_end)
+            -> chunker flushes at message_end
+                   -> channel send (block replies)
+```
+
+## Configuration
+
+```json5
+{
+  agents: {
+    defaults: {
+      blockStreamingDefault: "off",       // "on" | "off"
+      blockStreamingBreak: "text_end",    // "text_end" | "message_end"
+      blockStreamingChunk: {
+        minChars: 800,
+        maxChars: 1200,
+        breakPreference: "paragraph",     // paragraph > newline > sentence > whitespace
+      },
+      blockStreamingCoalesce: {
+        idleMs: 1000,
+        minChars: 1500,                   // Bumped for Signal/Slack/Discord
+        maxChars: 4000,
+      },
+      humanDelay: {
+        mode: "off",                      // "off" | "natural" (800-2500ms) | "custom"
+        // minMs: 800,                    // For custom mode
+        // maxMs: 2500,
+      },
+    },
+  },
+}
+```
+
+Channel-level overrides:
+- `*.blockStreaming`: forces `"on"`/`"off"` per channel
+- `*.textChunkLimit`: hard character cap per channel
+- `*.chunkMode`: `length` (default) or `newline` (splits on blank lines)
+- `channels.discord.maxLinesPerMessage`: default 17
+
+**Critical**: Block streaming is off unless `*.blockStreaming` is explicitly `true`.
+
+## Chunking Algorithm (EmbeddedBlockChunker)
+
+- **Low bound**: don't emit until buffer >= `minChars` (unless forced)
+- **High bound**: prefer splits before `maxChars`; if forced, split at `maxChars`
+- **Break preference**: `paragraph` → `newline` → `sentence` → `whitespace` → hard break
+- **Code fence handling**: Never split inside fences; when forced, close + reopen to keep Markdown valid
+- **maxChars clamped** to channel `textChunkLimit`
+
+## Boundary Semantics
+
+| Break | Behavior |
+|---|---|
+| `text_end` | Stream blocks immediately as chunker emits; flush on each text_end event |
+| `message_end` | Buffer all output until message completes, then flush |
 
 ## Coalescing (Merge Streamed Blocks)
 
-- `agents.defaults.blockStreamingCoalesce`: merge multiple streamed blocks back into a single message after completion.
-- Reduces notification noise while preserving progressive display during streaming.
-
-## Human-Like Pacing Between Blocks
-
-- Configurable delay between streamed blocks for a more natural chat experience.
-- Typing indicators fire during delays.
-
-## "Stream Chunks or Everything"
-
-- When block streaming is off, the full reply is sent as a single message after completion.
-- When on, partial chunks are sent progressively as they become available.
+Merges consecutive block chunks before sending:
+- Waits for idle gaps (`idleMs`) before flushing
+- Capped by `maxChars` (flushes if exceeded)
+- Joiner from `breakPreference`: `paragraph` → `\n\n`, `newline` → `\n`, `sentence` → space
 
 ## Preview Streaming Modes
 
-### Channel Mapping
+Config key: `channels.<channel>.streaming`
 
-Different channels support different preview modes:
-
-| Channel | Preview Support |
+| Mode | Description |
 |---|---|
-| WebChat / Control UI | Full streaming preview |
-| Telegram | Draft bubble editing |
-| WhatsApp | No preview (blocks only) |
-| Discord | Message editing |
+| `off` | Disable preview streaming |
+| `partial` | Single preview replaced with latest text |
+| `block` | Preview updates in chunked/appended steps |
+| `progress` | Status preview during generation, final answer at completion |
 
-### Runtime Behavior
+### Channel Support
 
-- Streaming deltas are emitted as `assistant` events on the WS protocol.
-- Clients choose whether to display real-time deltas or wait for blocks.
-- Channel adapters handle the translation to channel-specific UX.
+| Channel | `off` | `partial` | `block` | `progress` |
+|---|---|---|---|---|
+| Telegram | yes | yes | yes | maps to `partial` |
+| Discord | yes | yes | yes | maps to `partial` |
+| Slack | yes | yes | yes | yes (native streaming) |
+
+### Legacy Migration
+
+- Telegram/Discord: `streamMode` + boolean `streaming` auto-migrate to `streaming` enum
+- Slack: `streamMode` → `streaming` enum; boolean `streaming` → `nativeStreaming`
+
+## Configuration Patterns
+
+| Goal | Config |
+|---|---|
+| Stream chunks progressively | `blockStreamingDefault: "on"` + `blockStreamingBreak: "text_end"` + `*.blockStreaming: true` |
+| Stream everything at end | `blockStreamingBreak: "message_end"` |
+| Disable block streaming | `blockStreamingDefault: "off"` |
+| Natural pacing | `humanDelay: { mode: "natural" }` |
